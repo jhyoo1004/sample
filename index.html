@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>AI 야구부 분석: 수치형 그래프와 변수 관계</title>
+    <title>AI 야구부 분석: S-곡선과 변수 관계</title>
     <style>
         body { font-family: 'Pretendard', sans-serif; background: #f8f9fa; display: flex; justify-content: center; padding: 20px; }
         .container { background: white; width: 680px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
@@ -105,27 +105,4 @@
         // 로지스틱 회귀 수식 적용
         const x = rawValue / 1000;
         const w = 45; // S-곡선의 기울기
-        const b = -w * 0.300; // 0.300을 결정 경계(0.5)로 설정
-        const z = w * x + b;
-        const p = 1 / (1 + Math.exp(-z));
-        
-        const probability = (p * 100).toFixed(1);
-        probText.innerText = probability;
-
-        // 그래프 위 포인트 위치 업데이트
-        point.style.left = (rawValue / 600 * 100) + "%";
-        point.style.bottom = (p * 100) + "%";
-
-        // 분류 결과 판정 (0.5 기준)
-        if (p >= 0.5) {
-            decisionBox.className = "decision-box pass";
-            resText.innerText = "3할 타자 (1)";
-        } else {
-            decisionBox.className = "decision-box fail";
-            resText.innerText = "일반 타자 (0)";
-        }
-    });
-</script>
-
-</body>
-</html>
+        const b = -w * 0.300; // 0.300을 결정 경계(
