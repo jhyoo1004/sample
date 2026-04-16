@@ -2,65 +2,98 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>로지스틱 회귀 체험 교구</title>
+    <title>야구부 선발 AI: 로지스틱 회귀 체험</title>
     <style>
-        body { font-family: 'Pretendard', sans-serif; padding: 20px; text-align: center; background: #f8f9fa; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 450px; }
-        .slider { width: 100%; margin: 20px 0; cursor: pointer; }
-        .result-area { margin-top: 20px; padding: 20px; border-radius: 10px; font-weight: bold; font-size: 24px; }
-        .pass { background: #e3f2fd; color: #1976d2; }
-        .fail { background: #ffebee; color: #d32f2f; }
-        .prob-bar-container { background: #eee; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
-        .prob-bar { height: 100%; transition: width 0.3s ease; }
+        body { font-family: 'Pretendard', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 40px; }
+        .container { background: white; width: 550px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #1a3a5f; font-size: 1.5rem; margin-bottom: 10px; }
+        .description { color: #666; font-size: 0.9rem; margin-bottom: 25px; }
+        
+        /* 슬라이더 스타일 */
+        .input-group { background: #f8f9fa; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .slider { width: 100%; height: 10px; border-radius: 5px; background: #ddd; outline: none; transition: 0.2s; }
+        .score-display { font-size: 2rem; font-weight: bold; color: #007bff; margin: 10px 0; }
+
+        /* 결과 영역 */
+        .result-card { padding: 25px; border-radius: 15px; transition: all 0.3s ease; }
+        .pass { background: #e7f3ff; border: 2px solid #007bff; color: #007bff; }
+        .fail { background: #fff0f0; border: 2px solid #dc3545; color: #dc3545; }
+        
+        .prob-container { margin: 15px 0; text-align: left; font-size: 0.85rem; }
+        .prob-bar-bg { background: #eee; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 5px; }
+        .prob-bar-fill { height: 100%; width: 50%; transition: width 0.3s ease; }
+
+        .formula-box { font-size: 0.8rem; color: #888; margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>로지스틱 회귀: 합격 예측기</h2>
-        <p>공부 시간을 조절하며 확률의 변화를 확인하세요.</p>
-        
-        <div style="font-size: 1.2rem;">공부 시간: <span id="timeVal">5</span>시간</div>
-        <input type="range" id="inputX" class="slider" min="0" max="10" step="0.1" value="5">
-        
-        <div class="prob-bar-container">
-            <div id="bar" class="prob-bar" style="width: 50%; background: #4CAF50;"></div>
-        </div>
-        
-        <div id="resultBox" class="result-area pass">
-            합격 확률: <span id="prob">50.0</span>%<br>
-            <span id="decision">판정: 합격(1)</span>
-        </div>
-        
-        <p style="font-size: 0.9rem; color: #666; margin-top: 15px;">
-            * 기준값(0.5)을 넘으면 '분류'가 바뀝니다.
-        </p>
+
+<div class="container">
+    <h1>⚾ 야구부 선발 AI 코치</h1>
+    <p class="description">던지기 점수에 따른 합격 확률을 로지스틱 회귀로 계산합니다.</p>
+
+    <div class="input-group">
+        <label>나의 던지기 점수</label>
+        <div class="score-display"><span id="scoreText">50</span>점</div>
+        <input type="range" id="scoreSlider" class="slider" min="0" max="100" value="50">
     </div>
 
-    <script>
-        const input = document.getElementById('inputX');
-        input.addEventListener('input', (e) => {
-            const x = e.target.value;
-            document.getElementById('timeVal').innerText = x;
-            
-            // 지도서 기반 로직: 직선을 S-곡선으로 변환
-            const z = 1.5 * (x - 5); 
-            const p = 1 / (1 + Math.exp(-z));
-            const probPercent = (p * 100).toFixed(1);
-            
-            document.getElementById('prob').innerText = probPercent;
-            document.getElementById('bar').style.width = probPercent + "%";
-            
-            const resultBox = document.getElementById('resultBox');
-            const decision = document.getElementById('decision');
-            
-            if (p >= 0.5) {
-                resultBox.className = "result-area pass";
-                decision.innerText = "판정: 합격 (1)";
-            } else {
-                resultBox.className = "result-area fail";
-                decision.innerText = "판정: 불합격 (0)";
-            }
-        });
-    </script>
+    <div id="resultCard" class="result-card pass">
+        <div style="font-size: 1.1rem; margin-bottom: 5px;">현재 합격 확률</div>
+        <div style="font-size: 2.5rem; font-weight: 800;"><span id="probText">50</span>%</div>
+        
+        <div class="prob-container">
+            <span>확률 게이지 (0.5 기준)</span>
+            <div class="prob-bar-bg">
+                <div id="probFill" class="prob-bar-fill" style="background-color: #007bff;"></div>
+            </div>
+        </div>
+        
+        <h2 id="decisionText" style="margin-top: 10px;">결과: 합격(1)</h2>
+    </div>
+
+    <div class="formula-box">
+        <strong>교수학습 포인트:</strong><br>
+        선형 회귀의 결과값(직선)을 <b>시그모이드 함수</b>에 통과시켜<br>
+        0과 1 사이의 '확률'로 변환한 결과입니다.
+    </div>
+</div>
+
+<script>
+    const slider = document.getElementById('scoreSlider');
+    const scoreText = document.getElementById('scoreText');
+    const probText = document.getElementById('probText');
+    const probFill = document.getElementById('probFill');
+    const resultCard = document.getElementById('resultCard');
+    const decisionText = document.getElementById('decisionText');
+
+    slider.addEventListener('input', function() {
+        const x = parseFloat(this.value);
+        scoreText.innerText = x;
+
+        // 로지스틱 회귀 모델 파라미터 (임의 설정: 점수 50일 때 확률 0.5)
+        // 기울기(w)를 0.15로 설정하여 변화를 직관적으로 보이게 함
+        const w = 0.15;
+        const b = -7.5; // 0.15 * 50 = 7.5를 상쇄
+        const z = w * x + b;
+        const p = 1 / (1 + Math.exp(-z)); // 시그모이드 함수
+        
+        const probability = (p * 100).toFixed(1);
+        probText.innerText = probability;
+        probFill.style.width = probability + "%";
+
+        // 분류(Classification) 단계: 0.5(50%)를 기준으로 결정
+        if (p >= 0.5) {
+            resultCard.className = "result-card pass";
+            probFill.style.backgroundColor = "#007bff";
+            decisionText.innerText = "결과: 합격 (1)";
+        } else {
+            resultCard.className = "result-card fail";
+            probFill.style.backgroundColor = "#dc3545";
+            decisionText.innerText = "결과: 불합격 (0)";
+        }
+    });
+</script>
+
 </body>
 </html>
