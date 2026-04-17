@@ -2,41 +2,51 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>AI 야구부 분석: S-곡선과 변수 관계</title>
+    <title>AI 야구부 분석: 실시간 그래프 연동 모델</title>
     <style>
         body { font-family: 'Pretendard', sans-serif; background: #f8f9fa; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; width: 680px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #0d47a1; font-size: 1.5rem; margin-bottom: 25px; }
+        .container { background: white; width: 700px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #0d47a1; font-size: 1.5rem; margin-bottom: 20px; }
         
         /* 변수 설명 카드 */
         .variable-info { display: flex; justify-content: space-between; margin-bottom: 25px; gap: 15px; }
-        .var-card { flex: 1; padding: 15px; border-radius: 12px; font-size: 0.9rem; border: 1px solid #dee2e6; }
-        .independent { border-top: 5px solid #2196f3; background: #e3f2fd; }
-        .dependent { border-top: 5px solid #ff9800; background: #fff3e0; }
-        .var-title { font-weight: bold; display: block; margin-bottom: 5px; color: #333; }
+        .var-card { flex: 1; padding: 12px; border-radius: 12px; font-size: 0.85rem; border: 1px solid #dee2e6; }
+        .independent { border-left: 5px solid #2196f3; background: #e3f2fd; }
+        .dependent { border-left: 5px solid #ff9800; background: #fff3e0; }
 
         /* 조작 패널 */
-        .control-panel { background: #f1f3f5; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 30px; }
-        .slider { width: 100%; height: 10px; border-radius: 5px; margin: 15px 0; cursor: pointer; }
-        .val-display { font-size: 2.5rem; font-weight: 800; color: #1565c0; }
+        .control-panel { background: #f1f3f5; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+        .slider { width: 100%; height: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; }
+        .val-display { font-size: 2.2rem; font-weight: 800; color: #1565c0; }
 
-        /* 그래프 영역 (축 숫자 포함) */
-        .visualization { padding: 20px 40px 50px 60px; border-radius: 15px; background: #fff; border: 1px solid #eee; position: relative; }
-        .graph-wrapper { height: 200px; position: relative; border-bottom: 2px solid #333; border-left: 2px solid #333; }
+        /* 그래프 영역 */
+        .visualization { padding: 40px; background: #fff; position: relative; }
+        .graph-container { width: 100%; height: 250px; position: relative; border-bottom: 2px solid #333; border-left: 2px solid #333; }
         
-        /* 축 숫자 라벨 스타일 */
-        .y-axis-labels { position: absolute; left: -45px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; font-size: 0.8rem; color: #666; text-align: right; width: 40px; }
-        .x-axis-labels { position: absolute; bottom: -30px; width: 100%; display: flex; justify-content: space-between; font-size: 0.8rem; color: #666; }
-        .axis-title-y { position: absolute; left: -55px; top: -25px; font-size: 0.75rem; color: #333; font-weight: bold; }
-        .axis-title-x { position: absolute; right: -40px; bottom: -25px; font-size: 0.75rem; color: #333; font-weight: bold; }
+        /* 축 숫자 라벨 (축 위에 직접 표시) */
+        .axis-label { position: absolute; font-size: 0.8rem; color: #555; font-weight: bold; }
+        .y-label { left: -35px; width: 30px; text-align: right; transform: translateY(50%); }
+        .x-label { bottom: -25px; transform: translateX(-50%); }
 
-        /* 곡선 및 포인트 */
+        /* 시그모이드 곡선 SVG */
         .sigmoid-svg { width: 100%; height: 100%; overflow: visible; }
-        .current-point { position: absolute; width: 14px; height: 14px; background: #ff1744; border-radius: 50%; transform: translate(-50%, 50%); transition: all 0.15s ease; z-index: 10; border: 2px solid white; }
-        .threshold-line { position: absolute; width: 100%; border-top: 1px dashed #ff9800; bottom: 50%; pointer-events: none; }
+        .curve-line { stroke: #007bff; stroke-width: 3; fill: none; opacity: 0.4; }
+        
+        /* 실시간 포인트 */
+        .current-point { 
+            position: absolute; 
+            width: 16px; 
+            height: 16px; 
+            background: #ff1744; 
+            border: 3px solid white;
+            border-radius: 50%; 
+            box-shadow: 0 0 8px rgba(255,23,68,0.6);
+            transform: translate(-50%, 50%); 
+            z-index: 100;
+        }
 
         /* 최종 판정 결과 */
-        .decision-box { text-align: center; padding: 20px; border-radius: 15px; font-size: 1.6rem; font-weight: bold; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .decision-box { text-align: center; padding: 20px; border-radius: 15px; font-size: 1.6rem; font-weight: bold; margin-top: 10px; transition: 0.3s; }
         .pass { background: #1a237e; color: white; }
         .fail { background: #ffffff; color: #333; border: 2px solid #dee2e6; }
     </style>
@@ -44,45 +54,39 @@
 <body>
 
 <div class="container">
-    <h1>⚾ 3할 타자 분류 AI 모델 분석</h1>
+    <h1>⚾ 3할 타자 분류 AI 모델 시뮬레이션</h1>
 
     <div class="variable-info">
-        <div class="var-card independent">
-            <span class="var-title">🟦 독립변수 (x축)</span>
-            <strong>타율 (Batting Average)</strong><br>
-            원인이 되는 입력 값 (.000 ~ .600)
-        </div>
-        <div class="var-card dependent">
-            <span class="var-title">🟧 종속변수 (y축)</span>
-            <strong>합격 확률 (Probability)</strong><br>
-            타율에 의해 결정되는 결과 (0 ~ 1)
-        </div>
+        <div class="var-card independent"><strong>🟦 독립변수(x):</strong> 타율 (.000~.600)</div>
+        <div class="var-card dependent"><strong>🟧 종속변수(y):</strong> 합격 확률 (0.0~1.0)</div>
     </div>
 
     <div class="control-panel">
-        <label>타율 조절 (독립변수 x 입력)</label>
+        <label>타율 입력 (x)</label>
         <div class="val-display">.<span id="avgText">300</span></div>
         <input type="range" id="avgSlider" class="slider" min="0" max="600" value="300">
     </div>
 
     <div class="visualization">
-        <span class="axis-title-y">확률(y)</span>
-        <div class="y-axis-labels">
-            <span>1.0</span><span>0.75</span><span>0.5</span><span>0.25</span><span>0.0</span>
-        </div>
-        
-        <div class="graph-wrapper">
-            <div class="threshold-line"></div>
-            <svg class="sigmoid-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
-                <path id="curvePath" d="M0,200 C250,200 280,200 300,100 C320,0 350,0 600,0" stroke="#007bff" stroke-width="3" fill="none" opacity="0.3" />
-            </svg>
-            <div id="point" class="current-point" style="left: 50%; bottom: 50%;"></div>
-        </div>
+        <div class="graph-container">
+            <div class="axis-label y-label" style="bottom: 100%;">1.0</div>
+            <div class="axis-label y-label" style="bottom: 75%;">0.75</div>
+            <div class="axis-label y-label" style="bottom: 50%;">0.5</div>
+            <div class="axis-label y-label" style="bottom: 25%;">0.25</div>
+            <div class="axis-label y-label" style="bottom: 0%;">0.0</div>
 
-        <div class="x-axis-labels">
-            <span>.000</span><span>.150</span><span>.300</span><span>.450</span><span>.600</span>
+            <svg class="sigmoid-svg" viewBox="0 0 600 250" preserveAspectRatio="none">
+                <path d="M0,250 C250,250 280,250 300,125 C320,0 350,0 600,0" class="curve-line" />
+            </svg>
+            
+            <div id="point" class="current-point"></div>
+
+            <div class="axis-label x-label" style="left: 0%;">.000</div>
+            <div class="axis-label x-label" style="left: 25%;">.150</div>
+            <div class="axis-label x-label" style="left: 50%;">.300</div>
+            <div class="axis-label x-label" style="left: 75%;">.450</div>
+            <div class="axis-label x-label" style="left: 100%;">.600</div>
         </div>
-        <span class="axis-title-x">타율(x)</span>
     </div>
 
     <div id="decisionBox" class="decision-box pass">
@@ -98,11 +102,39 @@
     const point = document.getElementById('point');
     const decisionBox = document.getElementById('decisionBox');
 
-    slider.addEventListener('input', function() {
-        const rawValue = parseInt(this.value);
+    function update() {
+        const rawValue = parseInt(slider.value);
         avgText.innerText = rawValue.toString().padStart(3, '0');
 
-        // 로지스틱 회귀 수식 적용
+        // 로지스틱 회귀 (시그모이드) 수식
         const x = rawValue / 1000;
-        const w = 45; // S-곡선의 기울기
-        const b = -w * 0.300; // 0.300을 결정 경계(
+        const w = 40; // 기울기
+        const b = -w * 0.300; // 결정 경계 0.300
+        const z = w * x + b;
+        const p = 1 / (1 + Math.exp(-z));
+        
+        const probability = (p * 100).toFixed(1);
+        probText.innerText = probability;
+
+        // 그래프 점 위치 실시간 연동
+        // x축: 0~600 범위를 0~100%로 변환
+        point.style.left = (rawValue / 600 * 100) + "%";
+        // y축: 0~1 확률을 0~100% 높이로 변환
+        point.style.bottom = (p * 100) + "%";
+
+        // 결과 판정 애니메이션 및 텍스트 변경
+        if (p >= 0.5) {
+            decisionBox.className = "decision-box pass";
+            resText.innerText = "3할 타자 (1)";
+        } else {
+            decisionBox.className = "decision-box fail";
+            resText.innerText = "일반 타자 (0)";
+        }
+    }
+
+    slider.addEventListener('input', update);
+    window.onload = update; // 초기 실행
+</script>
+
+</body>
+</html>
