@@ -2,22 +2,22 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>AI 야구부 분석: 회귀 모델 비교 학습</title>
+    <title>AI 야구 데이터 분석: 선형 vs 로지스틱 회귀</title>
     <style>
         body { font-family: 'Pretendard', sans-serif; background: #f8f9fa; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; width: 800px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #0d47a1; font-size: 1.5rem; margin-bottom: 20px; }
+        .container { background: white; width: 780px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #0d47a1; font-size: 1.4rem; margin-bottom: 20px; }
         
-        /* 1. 데이터 표 */
+        /* 1. 성적 데이터 표 */
         .data-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 0.9rem; text-align: center; }
         .data-table th { background: #e3f2fd; color: #1565c0; padding: 10px; border: 1px solid #dee2e6; }
         .data-table td { padding: 8px; border: 1px solid #dee2e6; background: #fff; }
         .highlight { background: #fff9c4 !important; font-weight: bold; transition: 0.3s; }
 
         /* 조작 패널 */
-        .control-panel { background: #f1f3f5; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
-        .val-display { font-size: 2.2rem; font-weight: 800; color: #1565c0; }
+        .control-panel { background: #f1f3f5; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
         .slider { width: 100%; height: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; }
+        .val-display { font-size: 2.2rem; font-weight: 800; color: #1565c0; }
 
         /* 그래프 영역 */
         .visualization { padding: 40px 20px 60px 60px; background: #fff; position: relative; }
@@ -30,13 +30,13 @@
         .sigmoid-svg { width: 100%; height: 100%; overflow: visible; }
         .curve-line { stroke: #007bff; stroke-width: 2.5; fill: none; opacity: 0.3; }
 
-        /* 판정 결과 */
-        .decision-box { text-align: center; padding: 15px; border-radius: 12px; font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; transition: 0.3s; border: 2px solid #dee2e6; }
+        /* 판정 결과 박스 */
+        .decision-box { text-align: center; padding: 15px; border-radius: 12px; font-size: 1.4rem; font-weight: bold; margin-bottom: 30px; transition: 0.3s; border: 2px solid #dee2e6; }
         .pass { background: #1a237e; color: white; border-color: #1a237e; }
 
-        /* 2. 선형 vs 로지스틱 비교 설명 (추가된 부분) */
+        /* 2. 비교 설명 섹션 (교과서 내용 반영) */
         .comparison-section { background: #fdfdfe; border: 1px solid #e0e0e0; padding: 25px; border-radius: 15px; }
-        .comparison-section h2 { font-size: 1.2rem; color: #333; margin-top: 0; border-left: 5px solid #0d47a1; padding-left: 10px; margin-bottom: 20px; }
+        .comparison-section h2 { font-size: 1.1rem; color: #333; margin-top: 0; border-bottom: 2px solid #0d47a1; display: inline-block; padding-bottom: 5px; margin-bottom: 20px; }
         .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .comp-card { padding: 15px; border-radius: 10px; font-size: 0.9rem; line-height: 1.6; }
         .linear-card { background: #f1f8e9; border: 1px solid #c5e1a5; }
@@ -49,7 +49,7 @@
 <body>
 
 <div class="container">
-    <h1>⚾ 야구부 데이터 분석: 선형 vs 로지스틱</h1>
+    <h1>⚾ 야구 데이터 분석: 선형 회귀 vs 로지스틱 회귀</h1>
 
     <table class="data-table">
         <thead>
@@ -66,7 +66,7 @@
     <div class="control-panel">
         <div class="val-display">.<span id="avgText">300</span></div>
         <input type="range" id="avgSlider" class="slider" min="0" max="600" value="300">
-        <div style="font-size: 0.85rem; color: #666;">타율을 조절하며 S-곡선 위 점의 이동을 확인하세요.</div>
+        <div style="font-size: 0.85rem; color: #666;">슬라이더를 조작하여 타율에 따른 확률의 변화를 확인하세요.</div>
     </div>
 
     <div class="visualization">
@@ -90,36 +90,34 @@
     </div>
 
     <div id="decisionBox" class="decision-box">
-        확률: <span id="probText">50.0</span>% → <span id="resText">판정 대기</span>
+        분석 확률: <span id="probText">50.0</span>% → <span id="resText">판정 중...</span>
     </div>
 
     <div class="comparison-section">
-        <h2>💡 어떤 차이가 있을까요?</h2>
+        <h2>💡 AI는 데이터를 어떻게 분석할까요?</h2>
         <div class="comp-grid">
             <div class="comp-card linear-card">
-                <span class="summary-tag" style="background: #689f38;">예측 모델</span>
+                <span class="summary-tag" style="background: #689f38;">수치 예측</span>
                 <span class="card-title">📉 선형 회귀 (Linear Regression)</span>
                 <ul>
-                    <li><strong>형태:</strong> 곧게 뻗은 직선</li>
-                    <li><strong>목적:</strong> 연속적인 <strong>'숫자'</strong> 맞히기</li>
-                    <li><strong>예시:</strong> "내년 연봉은 얼마일까?"</li>
-                    <li><strong>특징:</strong> 값이 무한히 커지거나 작아질 수 있어 0~1 사이의 확률을 표현하기 어렵습니다.</li>
+                    <li><strong>교과서 예시:</strong> <strong>"연습 시간"</strong>에 따른 <strong>"타율"</strong> 예측</li>
+                    <li><strong>데이터 관계:</strong> 연습 시간이 늘어날수록 타율도 비례해서 오르는 <strong>직선(Linear)</strong> 관계를 찾습니다.</li>
+                    <li><strong>결과:</strong> 타율 .250, .320처럼 연속적인 <strong>'숫자'</strong>로 나타납니다.</li>
                 </ul>
             </div>
             <div class="comp-card logistic-card">
-                <span class="summary-tag" style="background: #1976d2;">분류 모델</span>
+                <span class="summary-tag" style="background: #1976d2;">범주 분류</span>
                 <span class="card-title">📈 로지스틱 회귀 (Logistic Regression)</span>
                 <ul>
-                    <li><strong>형태:</strong> 굽어진 S자 곡선</li>
-                    <li><strong>목적:</strong> 성공할 <strong>'확률'</strong> 맞히기</li>
-                    <li><strong>예시:</strong> "이 선수는 3할 타자가 될까?"</li>
-                    <li><strong>특징:</strong> 결과를 항상 0과 1 사이로 가두어, 어떤 상황에서도 '확률'로 답해줍니다.</li>
+                    <li><strong>핵심 질문:</strong> "이 타율을 가진 선수는 <strong>3할 타자</strong> 그룹인가?"</li>
+                    <li><strong>데이터 관계:</strong> 타율을 0과 1 사이의 확률로 변환하는 <strong>S자 곡선</strong>을 활용합니다.</li>
+                    <li><strong>결과:</strong> 맞다(1) 또는 아니다(0)와 같은 <strong>'분류'</strong> 결과로 나타납니다.</li>
                 </ul>
             </div>
         </div>
         <div class="edu-tip">
-            <strong>🎓 선생님의 한마디:</strong> 
-            단순 비교(IF문)가 "맞다/틀리다"만 결정한다면, <strong>로지스틱 회귀</strong>는 그 결정에 대한 <strong>'확신(확률)'</strong>을 계산하는 과정입니다. 인공지능이 "0.301이니까 3할 타자일 확률이 52%야!"라고 말할 수 있는 건 바로 이 S-곡선 덕분입니다.
+            <strong>🎓 학습 포인트:</strong> 
+            교과서의 <strong>선형 회귀</strong>가 "얼마나 잘할까?"라는 <strong>정도</strong>를 측정한다면, <strong>로지스틱 회귀</strong>는 "합격할까?"라는 <strong>결정</strong>을 내리기 위해 '확률'을 계산하는 것입니다.
         </div>
     </div>
 </div>
