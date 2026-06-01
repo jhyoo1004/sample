@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>머신러닝 의사결정 트리 시뮬레이터</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg-deep: #050d1a;
+    --bg-card: #0a1628;
+    --bg-panel: #0d1f3c;
+    --blue-dark: #0f2a50;
+    --blue-mid: #1a4a8a;
+    --blue-bright: #2a7fff;
+    --blue-glow: #4d9fff;
+    --cyan: #00d4ff;
+    --cyan-dim: #0099bb;
+    --mint: #00f5c0;
+    --mint-dim: #00b88a;
+    --gold: #ffd700;
+    --orange: #ff8c00;
+    --green-pure: #00ff88;
+    --green-dim: #00cc66;
+    --red-soft: #ff4d6a;
+    --white: #ffffff;
+    --white-dim: #b8cce4;
+    --white-muted: #6a8aaa;
+    --grid-line: rgba(42, 127, 255, 0.12);
+    --glow-blue: 0 0 20px rgba(42, 127, 255, 0.5);
+    --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.5);
+    --glow-mint: 0 0 20px rgba(0, 245, 192, 0.5);
+    --glow-gold: 0 0 20px rgba(255, 215, 0, 0.5);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg-deep);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(42,127,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── TOP HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, var(--bg-panel), var(--blue-dark));
+    border: 1px solid rgba(42,127,255,0.3);
+    border-radius: 16px;
+    padding: 14px 24px;
+    box-shadow: var(--glow-blue), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .header-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: var(--glow-blue);
+  }
+
+  .header-title {
+    flex: 1;
+  }
+
+  .header-title h1 {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, var(--white), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-title p {
+    font-size: 12px;
+    color: var(--white-muted);
+    margin-top: 2px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .guide-msg {
+    flex: 2;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .guide-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: var(--glow-cyan);
+    animation: pulse 1.5s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .guide-text {
+    font-size: 14px;
+    color: var(--cyan);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .btn-reset {
+    background: linear-gradient(135deg, #1a0a30, #2a0a50);
+    border: 1px solid rgba(255,77,106,0.5);
+    color: var(--red-soft);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .btn-reset:hover {
+    background: linear-gradient(135deg, #2a1040, #3a1060);
+    box-shadow: 0 0 15px rgba(255,77,106,0.3);
+    transform: translateY(-1px);
+  }
+
+  /* ── STEP PROGRESS ── */
+  .step-bar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .step-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-panel);
+    border: 1px solid var(--grid-line);
+    border-radius: 10px;
+    padding: 8px 14px;
+    opacity: 0.5;
+    transition: all 0.4s;
+  }
+
+  .step-item.active {
+    opacity: 1;
+    border-color: var(--cyan);
+    background: rgba(0,212,255,0.08);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .step-item.done {
+    opacity: 0.9;
+    border-color: var(--mint);
+    background: rgba(0,245,192,0.06);
+  }
+
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--blue-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .step-item.active .step-num { background: var(--cyan); color: var(--bg-deep); }
+  .step-item.done .step-num { background: var(--mint); color: var(--bg-deep); }
+
+  .step-label { font-size: 12px; font-weight: 500; color: var(--white-dim); }
+  .step-item.active .step-label { color: var(--cyan); font-weight: 700; }
+  .step-item.done .step-label { color: var(--mint); }
+
+  /* ── MAIN GRID ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  /* ── DATA TABLE PANEL ── */
+  .panel {
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-card));
+    border: 1px solid rgba(42,127,255,0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.4);
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    background: linear-gradient(90deg, rgba(42,127,255,0.15), transparent);
+    border-bottom: 1px solid rgba(42,127,255,0.15);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-header h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .panel-badge {
+    background: rgba(0,212,255,0.15);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--cyan);
+    font-family: 'Space Mono', monospace;
+    margin-left: auto;
+  }
+
+  .table-wrap {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+  }
+
+  .table-wrap::-webkit-scrollbar { width: 4px; }
+  .table-wrap::-webkit-scrollbar-track { background: transparent; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--blue-mid); border-radius: 2px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--white-muted);
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+    background: var(--bg-card);
+    z-index: 2;
+  }
+
+  th.clickable-col {
+    cursor: pointer;
+  }
+
+  .col-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, var(--blue-mid), var(--blue-bright));
+    border: 1px solid var(--blue-glow);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--white);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .col-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--glow-blue);
+    background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+  }
+
+  .col-btn.active-col {
+    background: linear-gradient(135deg, var(--cyan-dim), var(--cyan));
+    box-shadow: var(--glow-cyan);
+    color: var(--bg-deep);
+  }
+
+  .col-btn.disabled-col {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: all 0.4s ease;
+  }
+
+  tbody tr:hover { background: rgba(42,127,255,0.06); }
+
+  td {
+    padding: 7px 4px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--white-dim);
+    transition: all 0.4s;
+  }
+
+  td:first-child {
+    color: var(--white-muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+  }
+
+  .result-O { color: var(--mint); font-weight: 900; font-size: 14px; }
+  .result-X { color: var(--red-soft); font-weight: 900; font-size: 14px; }
+
+  .row-맑음 { background: rgba(255,215,0,0.06) !important; }
+  .row-흐림 { background: rgba(0,245,192,0.07) !important; }
+  .row-비 { background: rgba(42,127,255,0.08) !important; }
+
+  tr.fade-row { opacity: 0.2; }
+  tr.highlight-row { 
+    background: rgba(0,212,255,0.15) !important;
+    box-shadow: inset 3px 0 0 var(--cyan);
+  }
+
+  /* ── TREE PANEL ── */
+  .tree-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .tree-canvas-wrap {
+    flex: 1;
+    min-height: 380px;
+  }
+
+  #tree-canvas {
+    width: 100%;
+    height: 100%;
+    min-height: 380px;
+  }
+
+  /* SVG tree nodes */
+  .tree-node-box {
+    rx: 10;
+    ry: 10;
+  }
+
+  /* ── PREDICTION PANEL ── */
+  .predict-panel {
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-card));
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 16px;
+    padding: 16px;
+    display: none;
+    box-shadow: var(--glow-cyan);
+  }
+
+  .predict-panel.visible { display: block; }
+
+  .predict-panel h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .predict-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .predict-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .predict-group label {
+    font-size: 11px;
+    color: var(--white-muted);
+    font-weight: 500;
+  }
+
+  .predict-select {
+    background: var(--blue-dark);
+    border: 1px solid var(--blue-mid);
+    border-radius: 8px;
+    color: var(--white);
+    padding: 7px 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    min-width: 100px;
+    transition: all 0.2s;
+  }
+
+  .predict-select:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .btn-predict {
+    background: linear-gradient(135deg, var(--blue-bright), var(--cyan));
+    border: none;
+    border-radius: 10px;
+    color: var(--bg-deep);
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Noto Sans KR', sans-serif;
+    margin-top: 14px;
+    box-shadow: var(--glow-blue);
+  }
+
+  .btn-predict:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(0,212,255,0.5);
+  }
+
+  .predict-result {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .predict-result.show-O {
+    display: block;
+    background: rgba(0,245,192,0.15);
+    border: 1px solid var(--mint);
+    color: var(--mint);
+    box-shadow: var(--glow-mint);
+    animation: resultPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .predict-result.show-X {
+    display: block;
+    background: rgba(255,77,106,0.15);
+    border: 1px solid var(--red-soft);
+    color: var(--red-soft);
+    animation: resultPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes resultPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── RULES PANEL ── */
+  .rules-panel {
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-card));
+    border: 1px solid rgba(0,245,192,0.2);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.4);
+  }
+
+  .rules-header {
+    padding: 10px 16px;
+    background: linear-gradient(90deg, rgba(0,245,192,0.12), transparent);
+    border-bottom: 1px solid rgba(0,245,192,0.12);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rules-header h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--mint);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .rules-body {
+    padding: 12px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 60px;
+    align-items: center;
+  }
+
+  .rule-empty {
+    color: var(--white-muted);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .rule-card {
+    background: linear-gradient(135deg, rgba(0,245,192,0.1), rgba(0,212,255,0.08));
+    border: 1px solid rgba(0,245,192,0.3);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    animation: ruleSlide 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: var(--glow-mint);
+  }
+
+  .rule-card .kw {
+    color: var(--cyan);
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+
+  .rule-card .val {
+    color: var(--white);
+    font-weight: 700;
+  }
+
+  .rule-card .result-pos { color: var(--mint); font-weight: 900; font-size: 15px; }
+  .rule-card .result-neg { color: var(--red-soft); font-weight: 900; font-size: 15px; }
+
+  @keyframes ruleSlide {
+    from { transform: translateX(-20px) scale(0.9); opacity: 0; }
+    to { transform: translateX(0) scale(1); opacity: 1; }
+  }
+
+  /* ── SVG TREE STYLES ── */
+  .node-root text, .node-inner text, .node-leaf text { font-family: 'Noto Sans KR', sans-serif; }
+
+  /* ── CELEBRATION ── */
+  .celebrate-badge {
+    position: absolute;
+    pointer-events: none;
+    animation: badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    z-index: 10;
+  }
+
+  @keyframes badgePop {
+    from { transform: scale(0) rotate(-20deg); opacity: 0; }
+    to { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  /* ── PATH HIGHLIGHT ── */
+  @keyframes pathFlow {
+    0% { stroke-dashoffset: 300; opacity: 0.3; }
+    100% { stroke-dashoffset: 0; opacity: 1; }
+  }
+
+  @keyframes nodeGlow {
+    0%, 100% { filter: drop-shadow(0 0 6px var(--cyan)); }
+    50% { filter: drop-shadow(0 0 20px var(--cyan)); }
+  }
+
+  @keyframes leafBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── STEP2 INSTRUCTIONS ── */
+  .hint-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--gold);
+    margin-left: auto;
+  }
+
+  @keyframes fadeInDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .panel-anim { animation: fadeInDown 0.4s ease; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-icon">🌳</div>
+    <div class="header-title">
+      <h1>머신러닝 의사결정 트리 시뮬레이터</h1>
+      <p>고등학교 &lt;인공지능 기초&gt; · Decision Tree Interactive Demo</p>
+    </div>
+    <div class="guide-msg">
+      <div class="guide-dot"></div>
+      <div class="guide-text" id="guide-text">📌 좌측 테이블의 열 버튼을 클릭하여 데이터를 분기해 보세요. [날씨] 먼저 클릭!</div>
+    </div>
+    <button class="btn-reset" onclick="resetAll()">↺ 시연 초기화</button>
+  </div>
+
+  <!-- STEP BAR -->
+  <div class="step-bar" id="step-bar">
+    <div class="step-item active" id="step-1">
+      <div class="step-num">1</div>
+      <div class="step-label">초기 데이터 확인</div>
+    </div>
+    <div style="color:var(--white-muted);font-size:18px;">›</div>
+    <div class="step-item" id="step-2">
+      <div class="step-num">2</div>
+      <div class="step-label">날씨로 1차 분기</div>
+    </div>
+    <div style="color:var(--white-muted);font-size:18px;">›</div>
+    <div class="step-item" id="step-3">
+      <div class="step-num">3</div>
+      <div class="step-label">습도로 2차 분기</div>
+    </div>
+    <div style="color:var(--white-muted);font-size:18px;">›</div>
+    <div class="step-item" id="step-4">
+      <div class="step-num">4</div>
+      <div class="step-label">AI 예측 시뮬레이션</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: DATA TABLE -->
+    <div class="panel panel-anim">
+      <div class="panel-header">
+        <h2>📊 원본 데이터셋</h2>
+        <span id="table-hint" class="hint-box" style="display:none;">💡 열 버튼을 클릭하세요</span>
+        <span class="panel-badge">14 rows · 4 features</span>
+      </div>
+      <div class="table-wrap">
+        <table id="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th class="clickable-col">
+                <div class="col-btn" id="btn-weather" onclick="clickWeather()">🌤 날씨</div>
+              </th>
+              <th class="clickable-col">
+                <div class="col-btn disabled-col" id="btn-temp" onclick="clickTemp()">🌡 기온</div>
+              </th>
+              <th class="clickable-col">
+                <div class="col-btn disabled-col" id="btn-humidity" onclick="clickHumidity()">💧 습도</div>
+              </th>
+              <th class="clickable-col">
+                <div class="col-btn disabled-col" id="btn-wind" onclick="clickWind()">💨 바람</div>
+              </th>
+              <th>결과</th>
+            </tr>
+          </thead>
+          <tbody id="data-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: TREE + PREDICT -->
+    <div class="tree-panel">
+
+      <!-- TREE CANVAS -->
+      <div class="panel tree-canvas-wrap">
+        <div class="panel-header">
+          <h2>🌳 의사결정 트리 캔버스</h2>
+          <span class="panel-badge" id="tree-badge">대기 중</span>
+        </div>
+        <svg id="tree-canvas" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow-filter">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+              <path d="M2,2 L6,4 L2,6 Z" fill="rgba(42,127,255,0.7)"/>
+            </marker>
+            <marker id="arrow-active" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+              <path d="M2,2 L6,4 L2,6 Z" fill="#00d4ff"/>
+            </marker>
+          </defs>
+          <text id="tree-empty-msg" x="50%" y="50%" text-anchor="middle" fill="rgba(106,138,170,0.5)" font-size="16" font-family="Noto Sans KR">
+            ← 날씨 버튼을 클릭하면 트리가 생성됩니다
+          </text>
+        </svg>
+      </div>
+
+      <!-- PREDICT PANEL -->
+      <div class="predict-panel" id="predict-panel">
+        <h3>🤖 AI 예측 시뮬레이션</h3>
+        <div class="predict-controls">
+          <div class="predict-group">
+            <label>🌤 날씨</label>
+            <select class="predict-select" id="pred-weather">
+              <option value="맑음">맑음</option>
+              <option value="흐림">흐림</option>
+              <option value="비">비</option>
+            </select>
+          </div>
+          <div class="predict-group" id="pred-humidity-group">
+            <label>💧 습도 <span style="font-size:10px;color:var(--white-muted)">(맑음일 때)</span></label>
+            <select class="predict-select" id="pred-humidity">
+              <option value="높음">높음</option>
+              <option value="보통">보통</option>
+            </select>
+          </div>
+          <div class="predict-group" id="pred-wind-group" style="display:none;">
+            <label>💨 바람 <span style="font-size:10px;color:var(--white-muted)">(비일 때)</span></label>
+            <select class="predict-select" id="pred-wind">
+              <option value="약함">약함</option>
+              <option value="강함">강함</option>
+            </select>
+          </div>
+          <button class="btn-predict" onclick="runPredict()">⚡ AI 예측하기</button>
+        </div>
+        <div class="predict-result" id="predict-result"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RULES PANEL -->
+  <div class="rules-panel">
+    <div class="rules-header">
+      <h2>📋 AI가 발견한 규칙</h2>
+    </div>
+    <div class="rules-body" id="rules-body">
+      <span class="rule-empty" id="rules-empty">데이터를 분석하여 규칙을 찾으세요 ─ 열 버튼을 클릭하면 AI가 패턴을 발견합니다</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+const DATA = [
+  {id:1, weather:'맑음', temp:'더움',   hum:'높음', wind:'약함', result:'X'},
+  {id:2, weather:'맑음', temp:'더움',   hum:'높음', wind:'강함', result:'X'},
+  {id:3, weather:'흐림', temp:'더움',   hum:'높음', wind:'약함', result:'O'},
+  {id:4, weather:'비',   temp:'온화함', hum:'높음', wind:'약함', result:'O'},
+  {id:5, weather:'비',   temp:'추움',   hum:'보통', wind:'약함', result:'O'},
+  {id:6, weather:'비',   temp:'추움',   hum:'보통', wind:'강함', result:'X'},
+  {id:7, weather:'흐림', temp:'추움',   hum:'보통', wind:'강함', result:'O'},
+  {id:8, weather:'맑음', temp:'온화함', hum:'높음', wind:'약함', result:'X'},
+  {id:9, weather:'맑음', temp:'추움',   hum:'보통', wind:'약함', result:'O'},
+  {id:10,weather:'비',   temp:'온화함', hum:'보통', wind:'약함', result:'O'},
+  {id:11,weather:'맑음', temp:'온화함', hum:'보통', wind:'강함', result:'O'},
+  {id:12,weather:'흐림', temp:'온화함', hum:'높음', wind:'강함', result:'O'},
+  {id:13,weather:'흐림', temp:'더움',   hum:'보통', wind:'약함', result:'O'},
+  {id:14,weather:'비',   temp:'온화함', hum:'높음', wind:'강함', result:'X'},
+];
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let state = 0; // 0=init, 1=weather clicked, 2=humidity clicked, 3=wind clicked
+const WEATHER_COLORS = { '맑음':'rgba(255,215,0,0.08)', '흐림':'rgba(0,245,192,0.09)', '비':'rgba(42,127,255,0.1)' };
+const WEATHER_BORDER = { '맑음':'rgba(255,215,0,0.4)', '흐림':'rgba(0,245,192,0.4)', '비':'rgba(42,127,255,0.4)' };
+
+// ═══════════════════════════════════════════════
+//  INIT TABLE
+// ═══════════════════════════════════════════════
+function buildTable() {
+  const tbody = document.getElementById('data-body');
+  tbody.innerHTML = '';
+  DATA.forEach(d => {
+    const tr = document.createElement('tr');
+    tr.id = `row-${d.id}`;
+    tr.innerHTML = `
+      <td>${d.id}</td>
+      <td class="cell-weather">${d.weather}</td>
+      <td class="cell-temp">${d.temp}</td>
+      <td class="cell-hum">${d.hum}</td>
+      <td class="cell-wind">${d.wind}</td>
+      <td class="${d.result === 'O' ? 'result-O' : 'result-X'}">${d.result}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  STEP INDICATOR
+// ═══════════════════════════════════════════════
+function setStep(n) {
+  for(let i=1;i<=4;i++) {
+    const el = document.getElementById(`step-${i}`);
+    el.classList.remove('active','done');
+    if(i < n) el.classList.add('done');
+    else if(i === n) el.classList.add('active');
+  }
+}
+
+function setGuide(msg) {
+  document.getElementById('guide-text').innerHTML = msg;
+}
+
+// ═══════════════════════════════════════════════
+//  STEP 1: WEATHER CLICK
+// ═══════════════════════════════════════════════
+function clickWeather() {
+  if(state !== 0) return;
+  state = 1;
+  setStep(2);
+  setGuide('🌤 날씨로 1차 분기 완료! 흐림 → 규칙 발견! 이제 <strong style="color:var(--cyan)">[습도]</strong> 버튼을 클릭해보세요.');
+
+  // Color rows by weather group
+  DATA.forEach(d => {
+    const tr = document.getElementById(`row-${d.id}`);
+    tr.style.background = WEATHER_COLORS[d.weather];
+    tr.style.borderLeft = `3px solid ${WEATHER_BORDER[d.weather]}`;
+  });
+
+  // Update col buttons
+  document.getElementById('btn-weather').classList.add('active-col');
+  document.getElementById('btn-humidity').classList.remove('disabled-col');
+
+  drawTree1();
+  addRule('흐림', null, null, 'O');
+  updateBadge('1차 분기 완료');
+  document.getElementById('rules-empty').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════
+//  STEP 2: HUMIDITY CLICK (맑음 분기)
+// ═══════════════════════════════════════════════
+function clickHumidity() {
+  if(state !== 1) return;
+  state = 2;
+  setStep(3);
+  setGuide('💧 맑음 → 습도로 2차 분기 완료! 비 그룹도 <strong style="color:var(--cyan)">[바람]</strong> 버튼으로 분기할 수 있어요.');
+
+  // Highlight sunny+humidity rows
+  DATA.forEach(d => {
+    const tr = document.getElementById(`row-${d.id}`);
+    if(d.weather === '맑음') {
+      tr.style.background = d.hum === '높음' ? 'rgba(255,77,106,0.12)' : 'rgba(0,245,192,0.12)';
+      tr.style.borderLeft = `3px solid ${d.hum === '높음' ? 'rgba(255,77,106,0.5)' : 'rgba(0,245,192,0.5)'}`;
+    }
+  });
+
+  document.getElementById('btn-humidity').classList.add('active-col');
+  document.getElementById('btn-wind').classList.remove('disabled-col');
+
+  drawTree2();
+  addRule('맑음', '습도', '높음', 'X');
+  addRule('맑음', '습도', '보통', 'O');
+  updateBadge('2차 분기 완료');
+}
+
+// ═══════════════════════════════════════════════
+//  STEP 3: WIND CLICK (비 분기)
+// ═══════════════════════════════════════════════
+function clickWind() {
+  if(state !== 2) return;
+  state = 3;
+  setStep(4);
+  setGuide('💨 비 → 바람으로 3차 분기 완료! 트리가 완성되었습니다. <strong style="color:var(--mint)">AI 예측 패널</strong>에서 예측해 보세요!');
+
+  DATA.forEach(d => {
+    const tr = document.getElementById(`row-${d.id}`);
+    if(d.weather === '비') {
+      tr.style.background = d.wind === '약함' ? 'rgba(0,245,192,0.12)' : 'rgba(255,77,106,0.12)';
+      tr.style.borderLeft = `3px solid ${d.wind === '약함' ? 'rgba(0,245,192,0.5)' : 'rgba(255,77,106,0.5)'}`;
+    }
+  });
+
+  document.getElementById('btn-wind').classList.add('active-col');
+
+  drawTree3();
+  addRule('비', '바람', '약함', 'O');
+  addRule('비', '바람', '강함', 'X');
+  updateBadge('트리 완성!');
+
+  // Show predict panel
+  setTimeout(() => {
+    const pp = document.getElementById('predict-panel');
+    pp.classList.add('visible');
+  }, 1000);
+}
+
+function clickTemp() { /* disabled or future use */ }
+
+// ═══════════════════════════════════════════════
+//  RULES
+// ═══════════════════════════════════════════════
+function addRule(w, attr, val, res) {
+  const body = document.getElementById('rules-body');
+  const card = document.createElement('div');
+  card.className = 'rule-card';
+  const resClass = res === 'O' ? 'result-pos' : 'result-neg';
+  let inner = '';
+  if(!attr) {
+    inner = `<span class="kw">IF</span> <span class="val">날씨 = ${w}</span> <span class="kw">THEN</span> 경기 = <span class="${resClass}">${res}</span>`;
+  } else {
+    inner = `<span class="kw">IF</span> <span class="val">날씨 = ${w}</span> <span class="kw">AND</span> <span class="val">${attr} = ${val}</span> <span class="kw">THEN</span> 경기 = <span class="${resClass}">${res}</span>`;
+  }
+  card.innerHTML = inner;
+  body.appendChild(card);
+}
+
+function updateBadge(t) { document.getElementById('tree-badge').textContent = t; }
+
+// ═══════════════════════════════════════════════
+//  SVG TREE DRAWING
+// ═══════════════════════════════════════════════
+const svg = document.getElementById('tree-canvas');
+
+function getSVGSize() {
+  const r = svg.getBoundingClientRect();
+  return { w: r.width || 700, h: r.height || 400 };
+}
+
+function clearTree() {
+  while(svg.children.length > 2) svg.removeChild(svg.lastChild); // keep defs + empty msg
+  document.getElementById('tree-empty-msg').style.display = 'none';
+}
+
+// Node positions for tree layout
+// Root: center top
+// L1: three branches (맑음, 흐림, 비)
+// L2 under 맑음: 높음, 보통
+// L2 under 비: 약함, 강함
+
+function getLayout() {
+  const {w,h} = getSVGSize();
+  const NW = 80, NH = 36;
+  const cx = w/2;
+  return {
+    root: { x: cx, y: 55, label: '날씨', type:'root' },
+    sunny: { x: cx - w*0.32, y: 160, label:'맑음\n(5개)', type:'inner', color:'#c4960a' },
+    cloudy: { x: cx, y: 160, label:'흐림\n(4개)', type:'leaf-O', color:'#00cc66' },
+    rainy: { x: cx + w*0.32, y: 160, label:'비\n(5개)', type:'inner', color:'#2a7fff' },
+    // Sunny children
+    highHum: { x: cx - w*0.32 - 70, y: 290, label:'높음\n(3개)', type:'leaf-X', color:'#cc3350' },
+    normHum: { x: cx - w*0.32 + 70, y: 290, label:'보통\n(2개)', type:'leaf-O', color:'#00cc66' },
+    // Rainy children
+    weakWind: { x: cx + w*0.32 - 70, y: 290, label:'약함\n(3개)', type:'leaf-O', color:'#00cc66' },
+    strongWind: { x: cx + w*0.32 + 70, y: 290, label:'강함\n(2개)', type:'leaf-X', color:'#cc3350' },
+    NW, NH
+  };
+}
+
+// Animated edge
+function drawEdge(x1, y1, x2, y2, label, color='rgba(42,127,255,0.6)', delay=0, id='') {
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.id = id;
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  const mx = (x1+x2)/2;
+  const my = (y1+y2)/2;
+  const d = `M${x1},${y1+18} Q${mx},${(y1+y2)/2+10} ${x2},${y2-18}`;
+  path.setAttribute('d', d);
+  path.setAttribute('stroke', color);
+  path.setAttribute('stroke-width','2');
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke-dasharray','200');
+  path.setAttribute('stroke-dashoffset','200');
+  path.style.transition = `stroke-dashoffset 0.6s ease ${delay}s`;
+  g.appendChild(path);
+  svg.appendChild(g);
+  // label on edge
+  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  txt.setAttribute('x', mx + 6);
+  txt.setAttribute('y', my - 4);
+  txt.setAttribute('fill', color);
+  txt.setAttribute('font-size','12');
+  txt.setAttribute('font-family','Noto Sans KR, sans-serif');
+  txt.setAttribute('font-weight','700');
+  txt.setAttribute('text-anchor','middle');
+  txt.setAttribute('opacity','0');
+  txt.textContent = label;
+  txt.style.transition = `opacity 0.4s ease ${delay+0.4}s`;
+  g.appendChild(txt);
+  svg.appendChild(g);
+  setTimeout(() => {
+    path.setAttribute('stroke-dashoffset','0');
+    txt.setAttribute('opacity','1');
+  }, 50);
+  return { path, txt, g };
+}
+
+function drawNode(x, y, lines, type, delay=0, id='') {
+  const NW=90, NH=40;
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.id = id;
+  g.setAttribute('transform',`translate(${x},${y})`);
+  g.style.opacity = '0';
+  g.style.transition = `opacity 0.4s ease ${delay}s`;
+
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x', -NW/2);
+  rect.setAttribute('y', -NH/2);
+  rect.setAttribute('width', NW);
+  rect.setAttribute('height', NH);
+  rect.setAttribute('rx','10');
+
+  let fill='', stroke='', textCol='#fff';
+
+  if(type === 'root' || type === 'inner') {
+    fill = type==='root'
+      ? 'url(#grad-root)'
+      : 'url(#grad-inner)';
+    stroke = '#2a7fff';
+  } else if(type === 'leaf-O') {
+    fill = 'url(#grad-O)';
+    stroke = '#00cc66';
+  } else if(type === 'leaf-X') {
+    fill = 'url(#grad-X)';
+    stroke = '#cc3350';
+  }
+
+  rect.setAttribute('fill', fill);
+  rect.setAttribute('stroke', stroke);
+  rect.setAttribute('stroke-width','2');
+  if(type === 'root') rect.setAttribute('filter','url(#glow-filter)');
+  g.appendChild(rect);
+
+  // Icon for leaf
+  if(type === 'leaf-O' || type === 'leaf-X') {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg','text');
+    icon.setAttribute('x','32');
+    icon.setAttribute('y','5');
+    icon.setAttribute('font-size','16');
+    icon.setAttribute('text-anchor','middle');
+    icon.textContent = type==='leaf-O' ? '✅' : '❌';
+    g.appendChild(icon);
+  }
+
+  lines.forEach((line, i) => {
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    const offset = lines.length === 1 ? 5 : (i===0 ? -4 : 10);
+    txt.setAttribute('x','0');
+    txt.setAttribute('y', String(offset));
+    txt.setAttribute('text-anchor','middle');
+    txt.setAttribute('fill', textCol);
+    txt.setAttribute('font-size', i===0 ? '13' : '11');
+    txt.setAttribute('font-family','Noto Sans KR, sans-serif');
+    txt.setAttribute('font-weight', i===0 ? '700' : '400');
+    txt.textContent = line;
+    g.appendChild(txt);
+  });
+
+  svg.appendChild(g);
+  setTimeout(() => { g.style.opacity = '1'; }, 50);
+  return g;
+}
+
+function ensureGrads() {
+  const defs = svg.querySelector('defs');
+  if(defs.querySelector('#grad-root')) return;
+
+  const grads = [
+    { id:'grad-root', c1:'#1a4a8a', c2:'#2a7fff' },
+    { id:'grad-inner', c1:'#0d2444', c2:'#1a4a8a' },
+    { id:'grad-O', c1:'#0a3020', c2:'#00882a' },
+    { id:'grad-X', c1:'#3a0a18', c2:'#992040' },
+  ];
+  grads.forEach(g => {
+    const lg = document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+    lg.id = g.id;
+    lg.setAttribute('x1','0%'); lg.setAttribute('y1','0%');
+    lg.setAttribute('x2','0%'); lg.setAttribute('y2','100%');
+    const s1 = document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s1.setAttribute('offset','0%'); s1.setAttribute('stop-color',g.c1);
+    const s2 = document.createElementNS('http://www.w3.org/2000/svg','stop');
+    s2.setAttribute('offset','100%'); s2.setAttribute('stop-color',g.c2);
+    lg.appendChild(s1); lg.appendChild(s2);
+    defs.appendChild(lg);
+  });
+}
+
+// ── DRAW TREE STAGE 1 ──
+function drawTree1() {
+  ensureGrads();
+  clearTree();
+  const L = getLayout();
+
+  // Edges first (behind nodes)
+  drawEdge(L.root.x, L.root.y, L.sunny.x, L.sunny.y, '맑음','rgba(255,215,0,0.7)', 0.3, 'edge-sunny');
+  drawEdge(L.root.x, L.root.y, L.cloudy.x, L.cloudy.y, '흐림','rgba(0,245,192,0.7)', 0.5, 'edge-cloudy');
+  drawEdge(L.root.x, L.root.y, L.rainy.x, L.rainy.y, '비','rgba(42,127,255,0.7)', 0.7, 'edge-rainy');
+
+  // Root node
+  drawNode(L.root.x, L.root.y, ['날씨'], 'root', 0, 'node-root');
+  // Child nodes
+  drawNode(L.sunny.x, L.sunny.y, ['맑음','(5개)'], 'inner', 0.4, 'node-sunny');
+  setTimeout(() => {
+    drawNode(L.cloudy.x, L.cloudy.y, ['흐림','(4개)'], 'leaf-O', 0, 'node-cloudy');
+    showCelebration(L.cloudy.x, L.cloudy.y - 50, '🎉 순도 100%!');
+  }, 700);
+  drawNode(L.rainy.x, L.rainy.y, ['비','(5개)'], 'inner', 0.8, 'node-rainy');
+}
+
+// ── DRAW TREE STAGE 2 ──
+function drawTree2() {
+  ensureGrads();
+  clearTree();
+  const L = getLayout();
+
+  // All edges
+  drawEdge(L.root.x, L.root.y, L.sunny.x, L.sunny.y,'맑음','rgba(255,215,0,0.7)', 0, 'edge-sunny');
+  drawEdge(L.root.x, L.root.y, L.cloudy.x, L.cloudy.y,'흐림','rgba(0,245,192,0.7)', 0.1, 'edge-cloudy');
+  drawEdge(L.root.x, L.root.y, L.rainy.x, L.rainy.y,'비','rgba(42,127,255,0.7)', 0.1, 'edge-rainy');
+  // Sunny children edges
+  drawEdge(L.sunny.x, L.sunny.y, L.highHum.x, L.highHum.y,'높음','rgba(255,77,106,0.7)', 0.3, 'edge-highHum');
+  drawEdge(L.sunny.x, L.sunny.y, L.normHum.x, L.normHum.y,'보통','rgba(0,245,192,0.7)', 0.5, 'edge-normHum');
+
+  drawNode(L.root.x, L.root.y, ['날씨'], 'root', 0, 'node-root');
+  drawNode(L.sunny.x, L.sunny.y, ['맑음','(5개)'], 'inner', 0, 'node-sunny');
+  drawNode(L.cloudy.x, L.cloudy.y, ['흐림','(4개)'], 'leaf-O', 0, 'node-cloudy');
+  drawNode(L.rainy.x, L.rainy.y, ['비','(5개)'], 'inner', 0, 'node-rainy');
+
+  // Add humidity node label inside sunny
+  const humG = document.createElementNS('http://www.w3.org/2000/svg','g');
+  humG.setAttribute('transform',`translate(${L.sunny.x}, ${(L.sunny.y+L.highHum.y)/2 - 20})`);
+  const humRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  humRect.setAttribute('x','-30'); humRect.setAttribute('y','-14');
+  humRect.setAttribute('width','60'); humRect.setAttribute('height','26');
+  humRect.setAttribute('rx','8');
+  humRect.setAttribute('fill','rgba(0,212,255,0.12)');
+  humRect.setAttribute('stroke','rgba(0,212,255,0.4)');
+  humRect.setAttribute('stroke-width','1');
+  humG.appendChild(humRect);
+  const humTxt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  humTxt.setAttribute('x','0'); humTxt.setAttribute('y','5');
+  humTxt.setAttribute('text-anchor','middle');
+  humTxt.setAttribute('fill','#00d4ff');
+  humTxt.setAttribute('font-size','11');
+  humTxt.setAttribute('font-family','Noto Sans KR, sans-serif');
+  humTxt.setAttribute('font-weight','700');
+  humTxt.textContent = '습도';
+  humG.appendChild(humTxt);
+  humG.style.opacity = '0';
+  humG.style.transition = 'opacity 0.4s ease 0.2s';
+  svg.appendChild(humG);
+  setTimeout(() => { humG.style.opacity='1'; }, 50);
+
+  setTimeout(() => {
+    drawNode(L.highHum.x, L.highHum.y, ['높음','(3개)'], 'leaf-X', 0, 'node-highHum');
+    drawNode(L.normHum.x, L.normHum.y, ['보통','(2개)'], 'leaf-O', 0.2, 'node-normHum');
+    showCelebration(L.highHum.x, L.highHum.y - 50, '✅ 규칙 발견!');
+    showCelebration(L.normHum.x, L.normHum.y - 50, '✅ 규칙 발견!');
+  }, 700);
+}
+
+// ── DRAW TREE STAGE 3 ──
+function drawTree3() {
+  ensureGrads();
+  clearTree();
+  const L = getLayout();
+
+  drawEdge(L.root.x, L.root.y, L.sunny.x, L.sunny.y,'맑음','rgba(255,215,0,0.7)',0,'edge-sunny');
+  drawEdge(L.root.x, L.root.y, L.cloudy.x, L.cloudy.y,'흐림','rgba(0,245,192,0.7)',0.05,'edge-cloudy');
+  drawEdge(L.root.x, L.root.y, L.rainy.x, L.rainy.y,'비','rgba(42,127,255,0.7)',0.1,'edge-rainy');
+  drawEdge(L.sunny.x, L.sunny.y, L.highHum.x, L.highHum.y,'높음','rgba(255,77,106,0.7)',0.15,'edge-highHum');
+  drawEdge(L.sunny.x, L.sunny.y, L.normHum.x, L.normHum.y,'보통','rgba(0,245,192,0.7)',0.2,'edge-normHum');
+  drawEdge(L.rainy.x, L.rainy.y, L.weakWind.x, L.weakWind.y,'약함','rgba(0,245,192,0.7)',0.3,'edge-weakWind');
+  drawEdge(L.rainy.x, L.rainy.y, L.strongWind.x, L.strongWind.y,'강함','rgba(255,77,106,0.7)',0.45,'edge-strongWind');
+
+  drawNode(L.root.x, L.root.y, ['날씨'], 'root', 0, 'node-root');
+  drawNode(L.sunny.x, L.sunny.y, ['맑음'], 'inner', 0.05, 'node-sunny');
+  drawNode(L.cloudy.x, L.cloudy.y, ['흐림'], 'leaf-O', 0.05, 'node-cloudy');
+  drawNode(L.rainy.x, L.rainy.y, ['비'], 'inner', 0.1, 'node-rainy');
+  drawNode(L.highHum.x, L.highHum.y, ['높음','→ X'], 'leaf-X', 0.2, 'node-highHum');
+  drawNode(L.normHum.x, L.normHum.y, ['보통','→ O'], 'leaf-O', 0.25, 'node-normHum');
+
+  setTimeout(() => {
+    drawNode(L.weakWind.x, L.weakWind.y, ['약함','→ O'], 'leaf-O', 0, 'node-weakWind');
+    drawNode(L.strongWind.x, L.strongWind.y, ['강함','→ X'], 'leaf-X', 0.15, 'node-strongWind');
+    showCelebration(L.weakWind.x, L.weakWind.y - 50, '✅ 규칙 발견!');
+    showCelebration(L.strongWind.x, L.strongWind.y - 50, '✅ 규칙 발견!');
+  }, 500);
+}
+
+function showCelebration(x, y, text) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x', x - 60);
+  rect.setAttribute('y', y - 14);
+  rect.setAttribute('width','120');
+  rect.setAttribute('height','26');
+  rect.setAttribute('rx','13');
+  rect.setAttribute('fill','rgba(0,245,192,0.25)');
+  rect.setAttribute('stroke','#00f5c0');
+  rect.setAttribute('stroke-width','1.5');
+  g.appendChild(rect);
+  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  txt.setAttribute('x', String(x));
+  txt.setAttribute('y', String(y+4));
+  txt.setAttribute('text-anchor','middle');
+  txt.setAttribute('fill','#00f5c0');
+  txt.setAttribute('font-size','12');
+  txt.setAttribute('font-family','Noto Sans KR, sans-serif');
+  txt.setAttribute('font-weight','700');
+  txt.textContent = text;
+  g.appendChild(txt);
+  g.style.opacity='0';
+  g.style.transform=`translate(0,-10px)`;
+  g.style.transition='all 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+  svg.appendChild(g);
+  setTimeout(() => { g.style.opacity='1'; g.style.transform='translate(0,0)'; }, 50);
+  setTimeout(() => {
+    g.style.transition='opacity 1s ease';
+    g.style.opacity='0';
+    setTimeout(() => svg.removeChild(g), 1000);
+  }, 2500);
+}
+
+// ═══════════════════════════════════════════════
+//  PREDICTION
+// ═══════════════════════════════════════════════
+document.getElementById('pred-weather').addEventListener('change', function() {
+  const v = this.value;
+  const hg = document.getElementById('pred-humidity-group');
+  const wg = document.getElementById('pred-wind-group');
+  hg.style.display = v === '맑음' ? 'flex' : 'none';
+  wg.style.display = v === '비' ? 'flex' : 'none';
+  document.getElementById('predict-result').className = 'predict-result';
+});
+
+function runPredict() {
+  const weather = document.getElementById('pred-weather').value;
+  const humidity = document.getElementById('pred-humidity').value;
+  const wind = document.getElementById('pred-wind').value;
+
+  let result = '';
+  let path = [];
+
+  if(weather === '흐림') {
+    result = 'O';
+    path = ['node-root','edge-cloudy','node-cloudy'];
+  } else if(weather === '맑음') {
+    path = ['node-root','edge-sunny','node-sunny'];
+    if(humidity === '높음') {
+      result = 'X';
+      path = [...path,'edge-highHum','node-highHum'];
+    } else {
+      result = 'O';
+      path = [...path,'edge-normHum','node-normHum'];
+    }
+  } else { // 비
+    path = ['node-root','edge-rainy','node-rainy'];
+    if(wind === '약함') {
+      result = 'O';
+      path = [...path,'edge-weakWind','node-weakWind'];
+    } else {
+      result = 'X';
+      path = [...path,'edge-strongWind','node-strongWind'];
+    }
+  }
+
+  highlightPath(path);
+
+  const resEl = document.getElementById('predict-result');
+  resEl.className = 'predict-result';
+  setTimeout(() => {
+    resEl.className = `predict-result show-${result}`;
+    resEl.innerHTML = result === 'O'
+      ? `⚡ AI 예측 결과: <strong>경기 진행 ✅</strong> — 오늘 테니스를 칠 수 있습니다!`
+      : `⚡ AI 예측 결과: <strong>경기 취소 ❌</strong> — 오늘 테니스는 어렵겠네요.`;
+  }, 1200);
+}
+
+function highlightPath(ids) {
+  // Reset all
+  svg.querySelectorAll('.path-highlight').forEach(el => el.remove());
+
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    setTimeout(() => {
+      if(id.startsWith('edge-')) {
+        // Highlight edge
+        const path = el.querySelector('path');
+        if(path) {
+          const hl = path.cloneNode(true);
+          hl.setAttribute('stroke','#00d4ff');
+          hl.setAttribute('stroke-width','4');
+          hl.setAttribute('stroke-dasharray','300');
+          hl.setAttribute('stroke-dashoffset','300');
+          hl.setAttribute('opacity','0.9');
+          hl.classList.add('path-highlight');
+          hl.style.transition = 'stroke-dashoffset 0.5s ease';
+          el.parentNode.insertBefore(hl, el.nextSibling);
+          setTimeout(() => { hl.setAttribute('stroke-dashoffset','0'); }, 30);
+        }
+      } else {
+        // Highlight node
+        const rect = el.querySelector('rect');
+        if(rect) {
+          const clone = rect.cloneNode(true);
+          clone.setAttribute('fill','none');
+          clone.setAttribute('stroke','#00d4ff');
+          clone.setAttribute('stroke-width','3');
+          clone.setAttribute('opacity','0');
+          clone.classList.add('path-highlight');
+          clone.style.transition = 'opacity 0.3s ease';
+          el.appendChild(clone);
+          setTimeout(() => { clone.setAttribute('opacity','1'); }, 30);
+          // Blink the final node
+          if(i === ids.length - 1) {
+            clone.style.animation = 'nodeGlow 0.8s ease-in-out 3';
+          }
+        }
+      }
+    }, i * 300);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════
+function resetAll() {
+  state = 0;
+  setStep(1);
+  setGuide('📌 좌측 테이블의 열 버튼을 클릭하여 데이터를 분기해 보세요. [날씨] 먼저 클릭!');
+
+  // Reset table rows
+  DATA.forEach(d => {
+    const tr = document.getElementById(`row-${d.id}`);
+    if(tr) {
+      tr.style.background = '';
+      tr.style.borderLeft = '';
+    }
+  });
+
+  // Reset col buttons
+  ['btn-weather','btn-temp','btn-humidity','btn-wind'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.classList.remove('active-col');
+    if(id !== 'btn-weather') btn.classList.add('disabled-col');
+  });
+
+  // Clear tree
+  const msg = document.getElementById('tree-empty-msg');
+  msg.style.display = 'block';
+  while(svg.children.length > 2) svg.removeChild(svg.lastChild);
+
+  // Reset rules
+  const rb = document.getElementById('rules-body');
+  rb.innerHTML = '<span class="rule-empty" id="rules-empty">데이터를 분석하여 규칙을 찾으세요 ─ 열 버튼을 클릭하면 AI가 패턴을 발견합니다</span>';
+
+  // Reset badge
+  updateBadge('대기 중');
+
+  // Hide predict
+  document.getElementById('predict-panel').classList.remove('visible');
+  document.getElementById('predict-result').className = 'predict-result';
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+buildTable();
+setStep(1);
+
+// Handle window resize for tree redraw
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if(state === 1) drawTree1();
+    else if(state === 2) drawTree2();
+    else if(state === 3) drawTree3();
+  }, 300);
+});
+</script>
+</body>
+</html>
